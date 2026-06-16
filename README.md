@@ -76,9 +76,45 @@ order_id = await bus.dispatch(CreateOrder(customer_id="c-123", total=49.99))
 
 Queries work the same way, just using `Query` and `QueryHandler` instead.
 
+## Events
+
+Where a command has exactly one handler, an **event** can have many — or none.
+Use `EventBus` to publish domain events (something that *happened*) to every
+interested subscriber:
+
+```python
+from dataclasses import dataclass
+
+from cqrs_bus import Event, EventHandler, EventBus
+
+@dataclass
+class OrderPlaced(Event):
+    order_id: str
+
+class SendConfirmationEmail(EventHandler[OrderPlaced]):
+    async def handle(self, event: OrderPlaced) -> None:
+        ...
+
+class UpdateAnalytics(EventHandler[OrderPlaced]):
+    async def handle(self, event: OrderPlaced) -> None:
+        ...
+
+bus = EventBus()
+bus.subscribe(OrderPlaced, SendConfirmationEmail())
+bus.subscribe(OrderPlaced, UpdateAnalytics())
+
+await bus.publish(OrderPlaced(order_id="o-1"))   # both subscribers run
+```
+
+Subscribers run **concurrently and in isolation**: one failing handler is
+logged (and counted in metrics) but never aborts the others, and `publish`
+itself does not raise. Publishing an event with no subscribers is a no-op.
+Auto-discovery picks up `EventHandler` subclasses from an `events/` package
+just like commands and queries.
+
 ## Auto-discovery
 
-If you have more than a handful of handlers, use `HandlerDiscovery` instead of registering them manually. Point it at your handlers package and it scans for all concrete `CommandHandler` and `QueryHandler` subclasses:
+If you have more than a handful of handlers, use `HandlerDiscovery` instead of registering them manually. Point it at your handlers package and it scans for all concrete `CommandHandler`, `QueryHandler`, and `EventHandler` subclasses:
 
 ```
 myapp/
@@ -88,6 +124,8 @@ myapp/
       cancel_order.py   # contains CancelOrderHandler
     queries/
       get_order.py      # contains GetOrderHandler
+    events/
+      order_placed.py   # contains one or more OrderPlaced subscribers
 ```
 
 The one-liner is `build_buses`. Point it at your handlers package, hand it the
@@ -100,6 +138,7 @@ buses = build_buses("myapp.handlers", dependencies={"db": my_db})
 
 order_id = await buses.command_bus.dispatch(CreateOrder(customer_id="c-123", total=49.99))
 order = await buses.query_bus.dispatch(GetOrder(order_id=order_id))
+await buses.event_bus.publish(OrderPlaced(order_id=order_id))
 ```
 
 Dependencies are injected by **parameter name**: a handler whose `__init__`

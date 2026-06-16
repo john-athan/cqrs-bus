@@ -10,9 +10,13 @@ from cqrs_bus.commands.command import CommandHandler
 from cqrs_bus.discovery.dependency_resolver import DependencyResolver
 from cqrs_bus.discovery.exceptions import InvalidHandlerError
 from cqrs_bus.discovery.handler_registry import HandlerMetadata, HandlerRegistry
+from cqrs_bus.events.event import EventHandler
 from cqrs_bus.queries.query import QueryHandler
 
 logger = logging.getLogger(__name__)
+
+# Handler base classes whose first generic argument names the message they handle.
+_HANDLER_BASES = (CommandHandler, QueryHandler, EventHandler)
 
 
 class HandlerDiscovery:
@@ -36,10 +40,14 @@ class HandlerDiscovery:
         for metadata in self._scan_for_handlers("queries", QueryHandler):
             self.registry.register_query_handler(metadata)
 
+        for metadata in self._scan_for_handlers("events", EventHandler):
+            self.registry.register_event_handler(metadata)
+
         logger.info(
             f"Handler discovery complete: "
             f"{self.registry.get_command_handler_count()} commands, "
-            f"{self.registry.get_query_handler_count()} queries"
+            f"{self.registry.get_query_handler_count()} queries, "
+            f"{self.registry.get_event_handler_count()} event handlers"
         )
 
         return self.registry
@@ -143,14 +151,14 @@ class HandlerDiscovery:
         for base in handler_class.__orig_bases__:
             origin = get_origin(base)
 
-            if origin in (CommandHandler, QueryHandler):
+            if origin in _HANDLER_BASES:
                 args = get_args(base)
                 if args:
                     return args[0]
 
             if origin is not None:
                 try:
-                    if issubclass(origin, (CommandHandler, QueryHandler)):
+                    if issubclass(origin, _HANDLER_BASES):
                         args = get_args(base)
                         if args:
                             return args[0]
@@ -158,5 +166,5 @@ class HandlerDiscovery:
                     pass
 
         raise InvalidHandlerError(
-            f"{handler_class.__name__} does not properly specify Command/Query type in generic parameters"
+            f"{handler_class.__name__} does not properly specify Command/Query/Event type in generic parameters"
         )

@@ -11,6 +11,8 @@ from cqrs_bus.discovery.exceptions import (
 )
 from cqrs_bus.discovery.handler_discovery import HandlerDiscovery
 from cqrs_bus.discovery.handler_registry import HandlerMetadata, HandlerRegistry
+from cqrs_bus.events.event import Event, EventHandler, TEvent
+from cqrs_bus.events.event_bus import EventBus
 from cqrs_bus.queries.query import Query, QueryHandler, TQuery
 from cqrs_bus.queries.query_bus import QueryBus
 from typing import TypeVar
@@ -28,6 +30,10 @@ __all__ = [
     "QueryHandler",
     "QueryBus",
     "TQuery",
+    "Event",
+    "EventHandler",
+    "EventBus",
+    "TEvent",
     "TResult",
     "HandlerDiscovery",
     "HandlerRegistry",

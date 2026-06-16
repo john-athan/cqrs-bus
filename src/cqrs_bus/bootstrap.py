@@ -13,6 +13,7 @@ from cqrs_bus.commands.command_bus import CommandBus
 from cqrs_bus.discovery.dependency_resolver import DependencyResolver
 from cqrs_bus.discovery.handler_discovery import HandlerDiscovery
 from cqrs_bus.discovery.handler_registry import HandlerMetadata
+from cqrs_bus.events.event_bus import EventBus
 from cqrs_bus.queries.query_bus import QueryBus
 
 OnDispatch = Callable[[str, float, "Exception | None"], None]
@@ -20,10 +21,11 @@ OnDispatch = Callable[[str, float, "Exception | None"], None]
 
 @dataclass(frozen=True)
 class Buses:
-    """The assembled command and query buses for an application."""
+    """The assembled command, query, and event buses for an application."""
 
     command_bus: CommandBus
     query_bus: QueryBus
+    event_bus: EventBus
 
 
 def _wire(
@@ -57,7 +59,7 @@ def build_buses(
             buses with ``(message_name, duration_seconds, exception | None)``.
 
     Returns:
-        A :class:`Buses` holding the assembled command and query buses.
+        A :class:`Buses` holding the assembled command, query, and event buses.
 
     Raises:
         MissingDependencyError: A handler requires a dependency not present in
@@ -74,4 +76,7 @@ def build_buses(
     query_bus = QueryBus(on_dispatch=on_dispatch)
     _wire(registry.get_all_query_handlers(), resolver, deps, query_bus.register)
 
-    return Buses(command_bus=command_bus, query_bus=query_bus)
+    event_bus = EventBus(on_dispatch=on_dispatch)
+    _wire(registry.get_all_event_handlers(), resolver, deps, event_bus.subscribe)
+
+    return Buses(command_bus=command_bus, query_bus=query_bus, event_bus=event_bus)

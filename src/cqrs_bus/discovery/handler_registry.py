@@ -15,6 +15,7 @@ class HandlerRegistry:
     def __init__(self):
         self._command_handlers: dict[type, HandlerMetadata] = {}
         self._query_handlers: dict[type, HandlerMetadata] = {}
+        self._event_handlers: dict[type, list[HandlerMetadata]] = {}
 
     def register_command_handler(self, metadata: HandlerMetadata) -> None:
         if metadata.command_or_query_type in self._command_handlers:
@@ -34,14 +35,25 @@ class HandlerRegistry:
             )
         self._query_handlers[metadata.command_or_query_type] = metadata
 
+    def register_event_handler(self, metadata: HandlerMetadata) -> None:
+        # Events are pub/sub: many handlers may subscribe to one event type, so
+        # unlike commands and queries this never raises on a second handler.
+        self._event_handlers.setdefault(metadata.command_or_query_type, []).append(metadata)
+
     def get_all_command_handlers(self) -> list[HandlerMetadata]:
         return list(self._command_handlers.values())
 
     def get_all_query_handlers(self) -> list[HandlerMetadata]:
         return list(self._query_handlers.values())
 
+    def get_all_event_handlers(self) -> list[HandlerMetadata]:
+        return [metadata for handlers in self._event_handlers.values() for metadata in handlers]
+
     def get_command_handler_count(self) -> int:
         return len(self._command_handlers)
 
     def get_query_handler_count(self) -> int:
         return len(self._query_handlers)
+
+    def get_event_handler_count(self) -> int:
+        return sum(len(handlers) for handlers in self._event_handlers.values())

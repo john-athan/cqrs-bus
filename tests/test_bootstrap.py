@@ -4,6 +4,7 @@ import pytest
 
 from cqrs_bus import Buses, MissingDependencyError, build_buses
 from fake_app.commands.create_item_handler import CreateItemCommand
+from fake_app.events.item_created_handler import RECORDED, ItemCreated
 from fake_app.queries.get_item_handler import GetItemQuery
 from fake_app.shared.commands.shared_command_handler import SharedCommand
 from fake_app_di.commands.save_handler import Repo, SaveCommand
@@ -29,6 +30,14 @@ class TestBuildBuses:
         buses = build_buses("fake_app")
         assert len(buses.command_bus._handlers) == 2
         assert len(buses.query_bus._handlers) == 1
+        # Two event handlers subscribe to ItemCreated.
+        assert buses.event_bus.handler_count(ItemCreated) == 2
+
+    async def test_event_publish_fans_out_to_all_subscribers(self):
+        buses = build_buses("fake_app")
+        RECORDED.clear()
+        await buses.event_bus.publish(ItemCreated(name="widget"))
+        assert set(RECORDED) == {"log:widget", "notify:widget"}
 
     async def test_injects_dependencies(self):
         buses = build_buses("fake_app_di", {"repo": Repo()})
