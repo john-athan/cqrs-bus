@@ -40,7 +40,7 @@ class TestBuildBuses:
         assert set(RECORDED) == {"log:widget", "notify:widget"}
 
     async def test_injects_dependencies(self):
-        buses = build_buses("fake_app_di", {"repo": Repo()})
+        buses = build_buses("fake_app_di", {Repo: Repo()})
         assert await buses.command_bus.dispatch(SaveCommand(value="x")) == "saved:x"
 
     def test_missing_dependency_raises(self):

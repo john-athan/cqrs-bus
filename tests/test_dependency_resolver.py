@@ -1,4 +1,4 @@
-import logging
+from typing import Optional
 
 import pytest
 
@@ -89,28 +89,29 @@ class TestInspectHandlerInit:
 
 
 class TestResolveDependencies:
+    """Dependencies are matched by the parameter's type annotation, not its name."""
+
     def test_resolves_single_dependency(self):
         resolver = DependencyResolver()
         svc = ServiceA()
-        resolved = resolver.resolve_dependencies(SingleDepHandler, {"service_a": svc})
+        resolved = resolver.resolve_dependencies(SingleDepHandler, {ServiceA: svc})
         assert resolved == {"service_a": svc}
 
     def test_resolves_multiple_dependencies(self):
         resolver = DependencyResolver()
         svc_a, svc_b = ServiceA(), ServiceB()
-        resolved = resolver.resolve_dependencies(MultiDepHandler, {"service_a": svc_a, "service_b": svc_b})
+        resolved = resolver.resolve_dependencies(MultiDepHandler, {ServiceA: svc_a, ServiceB: svc_b})
         assert resolved == {"service_a": svc_a, "service_b": svc_b}
 
     def test_ignores_extra_dependencies_in_map(self):
         resolver = DependencyResolver()
         svc = ServiceA()
-        resolved = resolver.resolve_dependencies(SingleDepHandler, {"service_a": svc, "extra": object()})
-        assert "extra" not in resolved
-        assert resolved["service_a"] is svc
+        resolved = resolver.resolve_dependencies(SingleDepHandler, {ServiceA: svc, ServiceB: object()})
+        assert resolved == {"service_a": svc}
 
     def test_missing_dependency_raises(self):
         resolver = DependencyResolver()
-        with pytest.raises(MissingDependencyError, match="requires 'service_a'"):
+        with pytest.raises(MissingDependencyError, match="is not registered in dependency_map"):
             resolver.resolve_dependencies(SingleDepHandler, {})
 
     def test_no_deps_returns_empty(self):
@@ -118,30 +119,48 @@ class TestResolveDependencies:
         resolved = resolver.resolve_dependencies(NoDepsHandler, {})
         assert resolved == {}
 
-    def test_type_mismatch_logs_warning(self, caplog):
+    def test_unwraps_pep604_union(self):
+        class PipeUnionHandler:
+            def __init__(self, service_a: ServiceA | None):
+                self.service_a = service_a
+
         resolver = DependencyResolver()
-        with caplog.at_level(logging.WARNING, logger="cqrs_bus.discovery.dependency_resolver"):
-            resolved = resolver.resolve_dependencies(SingleDepHandler, {"service_a": "wrong_type"})
-        assert any("expected ServiceA" in r.message for r in caplog.records)
-        assert resolved == {"service_a": "wrong_type"}  # still resolves; warning only
+        svc = ServiceA()
+        resolved = resolver.resolve_dependencies(PipeUnionHandler, {ServiceA: svc})
+        assert resolved == {"service_a": svc}
 
-    def test_isinstance_type_error_is_silenced(self):
-        # A type whose __instancecheck__ raises TypeError should not propagate — the
-        # dependency is still resolved (the warning is just skipped).
-        class _RaisingMeta(type):
-            def __instancecheck__(cls, instance):
-                raise TypeError("custom isinstance error")
+    def test_unwraps_typing_optional(self):
+        class OptionalHandler:
+            def __init__(self, service_a: Optional[ServiceA]):
+                self.service_a = service_a
 
-        class _BadType(metaclass=_RaisingMeta):
+        resolver = DependencyResolver()
+        svc = ServiceA()
+        resolved = resolver.resolve_dependencies(OptionalHandler, {ServiceA: svc})
+        assert resolved == {"service_a": svc}
+
+    def test_subclass_fallback(self):
+        class DerivedService(ServiceA):
             pass
 
-        class _HandlerWithBadType:
-            def __init__(self, dep: _BadType):
-                self.dep = dep
+        class DerivedDepHandler:
+            def __init__(self, service: DerivedService):
+                self.service = service
 
         resolver = DependencyResolver()
-        resolved = resolver.resolve_dependencies(_HandlerWithBadType, {"dep": object()})
-        assert "dep" in resolved
+        # A handler asking for DerivedService is satisfied by a registered base type.
+        base = ServiceA()
+        resolved = resolver.resolve_dependencies(DerivedDepHandler, {ServiceA: base})
+        assert resolved == {"service": base}
+
+    def test_unregistered_param_with_default_is_skipped(self):
+        class DefaultedHandler:
+            def __init__(self, service_a: ServiceA = None):  # type: ignore[assignment]
+                self.service_a = service_a
+
+        resolver = DependencyResolver()
+        resolved = resolver.resolve_dependencies(DefaultedHandler, {})
+        assert resolved == {}  # left to the constructor default
 
 
 class TestCreateHandlerInstance:
@@ -153,7 +172,7 @@ class TestCreateHandlerInstance:
     def test_creates_instance_with_deps(self):
         resolver = DependencyResolver()
         svc_a, svc_b = ServiceA(), ServiceB()
-        instance = resolver.create_handler_instance(MultiDepHandler, {"service_a": svc_a, "service_b": svc_b})
+        instance = resolver.create_handler_instance(MultiDepHandler, {ServiceA: svc_a, ServiceB: svc_b})
         assert isinstance(instance, MultiDepHandler)
         assert instance.service_a is svc_a
         assert instance.service_b is svc_b
@@ -172,6 +191,7 @@ class TestCreateHandlerInstance:
                     raise TypeError("count must be int")
                 self.count = count
 
-        # Type mismatch is warned (not raised); constructor TypeError wraps as MissingDependencyError
+        # The dependency resolves by type (int), but the constructor rejects the
+        # value — that TypeError is wrapped as MissingDependencyError.
         with pytest.raises(MissingDependencyError):
-            resolver.create_handler_instance(StrictHandler, {"count": "not-an-int"})
+            resolver.create_handler_instance(StrictHandler, {int: "not-an-int"})

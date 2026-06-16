@@ -134,17 +134,18 @@ shared dependencies your handlers need, and it returns ready-to-use buses:
 ```python
 from cqrs_bus import build_buses
 
-buses = build_buses("myapp.handlers", dependencies={"db": my_db})
+buses = build_buses("myapp.handlers", dependencies={Database: my_db})
 
 order_id = await buses.command_bus.dispatch(CreateOrder(customer_id="c-123", total=49.99))
 order = await buses.query_bus.dispatch(GetOrder(order_id=order_id))
 await buses.event_bus.publish(OrderPlaced(order_id=order_id))
 ```
 
-Dependencies are injected by **parameter name**: a handler whose `__init__`
-takes `db: Database` receives whatever you passed as `dependencies["db"]`.
-Missing dependencies raise `MissingDependencyError` at build time, not on first
-dispatch.
+Dependencies are injected by **type annotation**: a handler whose `__init__`
+takes `db: Database` receives whatever you registered under the `Database` key.
+`Optional[T]` / `T | None` are unwrapped, and a registered base type satisfies a
+subclass annotation. Missing dependencies raise `MissingDependencyError` at
+build time, not on first dispatch.
 
 ### Lower-level building blocks
 

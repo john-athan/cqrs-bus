@@ -1,4 +1,5 @@
 import inspect
+import types
 from typing import Any, Union, get_args, get_origin
 
 from cqrs_bus.discovery.exceptions import MissingDependencyError
@@ -70,8 +71,9 @@ class DependencyResolver:
         if annotation in dependency_map:
             return dependency_map[annotation]
 
-        # 2. Unwrap Union (X | Y, Optional[X]) — try each member in order
-        if get_origin(annotation) is Union:
+        # 2. Unwrap Union — both typing.Union/Optional[X] and PEP 604 X | Y —
+        #    and try each member in order.
+        if get_origin(annotation) in (Union, types.UnionType):
             for arg in get_args(annotation):
                 if arg in dependency_map:
                     return dependency_map[arg]

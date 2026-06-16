@@ -51,8 +51,9 @@ def build_buses(
     Args:
         base_package: Importable package to scan for ``commands``/``queries``
             handler modules (e.g. ``"myapp.handlers"``).
-        dependencies: Map of constructor parameter name -> instance, used to
-            inject dependencies into each discovered handler's ``__init__``.
+        dependencies: Map of dependency type -> instance, matched against each
+            discovered handler's ``__init__`` annotations by type (with Union
+            unwrapping and subclass fallback) and injected.
         strict: When True, discovery re-raises import/processing errors instead
             of logging and skipping the offending module.
         on_dispatch: Optional callback invoked after every dispatch on both
