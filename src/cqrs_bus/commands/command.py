@@ -3,7 +3,11 @@ from typing import Generic, TypeVar
 
 
 class Command(ABC):
-    pass
+    """Marker base class for commands (state-changing intents).
+
+    Carries no fields of its own — subclass it and add data with ``@dataclass``,
+    Pydantic, ``attrs``, or whatever you prefer.
+    """
 
 
 TCommand = TypeVar("TCommand", bound=Command)

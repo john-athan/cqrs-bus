@@ -3,7 +3,11 @@ from typing import Generic, TypeVar
 
 
 class Query(ABC):
-    pass
+    """Marker base class for queries (read-only requests).
+
+    Carries no fields of its own — subclass it and add data with ``@dataclass``,
+    Pydantic, ``attrs``, or whatever you prefer.
+    """
 
 
 TQuery = TypeVar("TQuery", bound=Query)

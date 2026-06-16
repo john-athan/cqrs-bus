@@ -1,3 +1,4 @@
+from cqrs_bus.bootstrap import Buses, build_buses
 from cqrs_bus.commands.command import Command, CommandHandler, TCommand
 from cqrs_bus.commands.command_bus import CommandBus
 from cqrs_bus.discovery.dependency_resolver import DependencyResolver
@@ -16,6 +17,8 @@ from typing import TypeVar
 TResult = TypeVar("TResult")
 
 __all__ = [
+    "Buses",
+    "build_buses",
     "Command",
     "CommandHandler",
     "CommandBus",

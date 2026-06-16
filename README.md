@@ -21,13 +21,16 @@ pip install "cqrs-bus[prometheus]"
 Define a command and its handler:
 
 ```python
+from dataclasses import dataclass
+
 from cqrs_bus import Command, CommandHandler
 
+@dataclass
 class CreateOrder(Command):
     customer_id: str
     total: float
 
-class CreateOrderHandler(CommandHandler[CreateOrder]):
+class CreateOrderHandler(CommandHandler[CreateOrder, str]):
     def __init__(self, db: Database):
         self.db = db
 
@@ -35,6 +38,12 @@ class CreateOrderHandler(CommandHandler[CreateOrder]):
         order_id = await self.db.insert_order(command.customer_id, command.total)
         return order_id
 ```
+
+`Command` and `Query` are plain marker base classes — they carry no fields of
+their own. Give your messages data however you like; `@dataclass` is the
+zero-dependency default, but Pydantic or `attrs` models work just as well.
+`CommandHandler[TCommand, TResult]` is parameterized by both the message type
+it handles and the type it returns.
 
 Wire it up and dispatch:
 
@@ -63,21 +72,41 @@ myapp/
       get_order.py      # contains GetOrderHandler
 ```
 
+The one-liner is `build_buses`. Point it at your handlers package, hand it the
+shared dependencies your handlers need, and it returns ready-to-use buses:
+
+```python
+from cqrs_bus import build_buses
+
+buses = build_buses("myapp.handlers", dependencies={"db": my_db})
+
+order_id = await buses.command_bus.dispatch(CreateOrder(customer_id="c-123", total=49.99))
+order = await buses.query_bus.dispatch(GetOrder(order_id=order_id))
+```
+
+Dependencies are injected by **parameter name**: a handler whose `__init__`
+takes `db: Database` receives whatever you passed as `dependencies["db"]`.
+Missing dependencies raise `MissingDependencyError` at build time, not on first
+dispatch.
+
+### Lower-level building blocks
+
+If you have your own DI container and want to control instantiation, drop down
+to `HandlerDiscovery` (which finds handlers) and the bus `register` methods:
+
 ```python
 from cqrs_bus import HandlerDiscovery, CommandBus, QueryBus
 
-discovery = HandlerDiscovery(base_package="myapp.handlers")
-registry = discovery.discover_all_handlers()
+registry = HandlerDiscovery(base_package="myapp.handlers").discover_all_handlers()
 
 command_bus = CommandBus()
-query_bus = QueryBus()
-
-for meta in registry.command_handlers.values():
-    deps = {name: resolve(dep) for name, dep in meta.dependencies.items()}
+for meta in registry.get_all_command_handlers():
+    deps = {name: my_container.resolve(dep) for name, dep in meta.dependencies.items()}
     command_bus.register(meta.command_or_query_type, meta.handler_class(**deps))
 
-for meta in registry.query_handlers.values():
-    deps = {name: resolve(dep) for name, dep in meta.dependencies.items()}
+query_bus = QueryBus()
+for meta in registry.get_all_query_handlers():
+    deps = {name: my_container.resolve(dep) for name, dep in meta.dependencies.items()}
     query_bus.register(meta.command_or_query_type, meta.handler_class(**deps))
 ```
 
