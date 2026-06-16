@@ -109,7 +109,7 @@ class TestCommandBusDispatch:
         bus = CommandBus()
         bus.register(SampleCommand, SlowHandler())
 
-        with patch("cqrs_bus.commands.command_bus.time") as mock_time:
+        with patch("cqrs_bus.bus.time") as mock_time:
             mock_time.monotonic.side_effect = [0.0, 2.0]
             with caplog.at_level(logging.INFO, logger="cqrs_bus.commands.command_bus"):
                 await bus.dispatch(SampleCommand())

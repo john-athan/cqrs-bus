@@ -1,4 +1,5 @@
 from cqrs_bus.bootstrap import Buses, build_buses
+from cqrs_bus.bus import MessageBus, Middleware, Next
 from cqrs_bus.commands.command import Command, CommandHandler, TCommand
 from cqrs_bus.commands.command_bus import CommandBus
 from cqrs_bus.discovery.dependency_resolver import DependencyResolver
@@ -32,6 +33,9 @@ __all__ = [
     "HandlerRegistry",
     "HandlerMetadata",
     "DependencyResolver",
+    "MessageBus",
+    "Middleware",
+    "Next",
     "HandlerDiscoveryError",
     "MissingDependencyError",
     "DuplicateHandlerError",

@@ -45,6 +45,24 @@ zero-dependency default, but Pydantic or `attrs` models work just as well.
 `CommandHandler[TCommand, TResult]` is parameterized by both the message type
 it handles and the type it returns.
 
+### Typed dispatch
+
+Parameterize the message with its result type — `Command[str]`, `Query[Order]`
+— and `dispatch` is statically typed end to end, so type checkers infer the
+return type with no casts:
+
+```python
+@dataclass
+class CreateOrder(Command[str]):   # this command resolves to a str
+    customer_id: str
+    total: float
+
+order_id = await bus.dispatch(CreateOrder(...))  # inferred as str
+```
+
+The parameter is optional; an unparameterized `Command` simply dispatches to
+`Any`.
+
 Wire it up and dispatch:
 
 ```python
@@ -111,6 +129,35 @@ for meta in registry.get_all_query_handlers():
 ```
 
 Handler dependencies are inferred from type annotations in `__init__`. The `DependencyResolver` inspects each handler class and returns a `{param_name: type}` dict that you can use with whatever DI container or factory you already have.
+
+## Middleware
+
+Wrap every dispatch with cross-cutting behavior — validation, transactions,
+retries, logging, auth — using an onion-style pipeline. A middleware receives
+the message and a `call_next` continuation; it can inspect or replace the
+message, short-circuit, transform the result, or catch errors:
+
+```python
+async def transactional(message, call_next):
+    async with db.transaction():
+        return await call_next(message)
+
+async def timing(message, call_next):
+    start = time.monotonic()
+    try:
+        return await call_next(message)
+    finally:
+        metrics.observe(type(message).__name__, time.monotonic() - start)
+
+bus = CommandBus(middleware=[timing])   # or bus.add_middleware(...)
+bus.add_middleware(transactional)
+```
+
+Middlewares run **outermost-first**: the first one added sees the message
+before — and the result after — every middleware added later. Both `CommandBus`
+and `QueryBus` support them (they share the same `MessageBus` base), and the
+`on_dispatch` callback and metrics measure the whole pipeline, middleware
+included.
 
 ## Observability
 

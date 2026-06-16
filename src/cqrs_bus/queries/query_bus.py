@@ -1,14 +1,14 @@
 import logging
-import time
 from collections.abc import Callable
 from typing import Any, TypeVar
-from uuid import uuid4
 
+from cqrs_bus.bus import MessageBus, Middleware
 from cqrs_bus.queries.query import Query, QueryHandler
 
 logger = logging.getLogger(__name__)
 
 TQuery = TypeVar("TQuery", bound=Query)
+TResult = TypeVar("TResult")
 
 try:
     from prometheus_client import Counter, Histogram
@@ -33,73 +33,34 @@ except ImportError:
     _prometheus = False
 
 
-class QueryBus:
-    def __init__(self, on_dispatch: Callable[[str, float, Exception | None], None] | None = None):
-        self._handlers: dict[type[Query], QueryHandler] = {}
-        self._on_dispatch = on_dispatch
+class QueryBus(MessageBus[Query]):
+    _logger = logger
+    _label = "QueryBus"
+    _noun = "query"
+    _id_key = "query_id"
+    _type_key = "query_type"
+
+    def __init__(
+        self,
+        on_dispatch: Callable[[str, float, "Exception | None"], None] | None = None,
+        middleware: "list[Middleware] | None" = None,
+    ):
+        super().__init__(on_dispatch=on_dispatch, middleware=middleware)
 
     def register(self, query_type: type[TQuery], handler: QueryHandler[TQuery, Any]) -> None:
-        if query_type in self._handlers:
-            raise ValueError(f"Handler already registered for query type {query_type.__name__}")
-        self._handlers[query_type] = handler
+        super().register(query_type, handler)
 
-    async def dispatch(self, query: TQuery) -> Any:
-        query_type = type(query)
-        query_name = query_type.__name__
-        query_id = str(uuid4())
+    async def dispatch(self, query: "Query[TResult]") -> TResult:
+        return await super().dispatch(query)
 
-        if query_type not in self._handlers:
-            logger.error(
-                f"[QueryBus] No handler registered for {query_name}",
-                extra={"query_id": query_id, "query_type": query_name},
-            )
-            raise ValueError(f"No handler registered for query type {query_name}")
-
-        handler = self._handlers[query_type]
-        handler_name = type(handler).__name__
-
-        logger.debug(
-            f"[QueryBus] Dispatching {query_name} to {handler_name}",
-            extra={"query_id": query_id, "query_type": query_name, "handler_type": handler_name},
-        )
-
+    def _inc_total(self, name: str) -> None:
         if _prometheus:
-            _query_total.labels(query_type=query_name).inc()
+            _query_total.labels(query_type=name).inc()
 
-        start_time = time.monotonic()
+    def _observe(self, name: str, duration: float) -> None:
+        if _prometheus:
+            _query_duration.labels(query_type=name).observe(duration)
 
-        try:
-            result = await handler.handle(query)
-            duration = time.monotonic() - start_time
-
-            if _prometheus:
-                _query_duration.labels(query_type=query_name).observe(duration)
-
-            if self._on_dispatch:
-                self._on_dispatch(query_name, duration, None)
-
-            logger.debug(
-                f"[QueryBus] Success: {query_name} ({duration:.3f}s)",
-                extra={"query_id": query_id, "query_type": query_name, "duration_seconds": duration},
-            )
-
-            return result
-
-        except Exception as e:
-            duration = time.monotonic() - start_time
-            error_type = type(e).__name__
-
-            if _prometheus:
-                _query_errors.labels(query_type=query_name, error_type=error_type).inc()
-
-            if self._on_dispatch:
-                self._on_dispatch(query_name, duration, e)
-
-            logger.error(
-                "[QueryBus] Failed: %s - %s",
-                query_name,
-                error_type,
-                extra={"query_id": query_id, "query_type": query_name, "error_type": error_type},
-                exc_info=True,
-            )
-            raise
+    def _inc_error(self, name: str, error_type: str) -> None:
+        if _prometheus:
+            _query_errors.labels(query_type=name, error_type=error_type).inc()
