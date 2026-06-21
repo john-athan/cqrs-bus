@@ -1,13 +1,30 @@
 [project]
 name = "cqrs-bus"
 version = "0.2.0"
-description = "Async CQRS Command/Query Bus with auto-discovery for Python"
+description = "Async CQRS command/query bus and mediator for Python — handler auto-discovery, type-based dependency injection, middleware, and an event bus."
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [{ name = "Jonathan Kaleve", email = "jonathan.kaleve@gmail.com" }]
 requires-python = ">=3.11"
 dependencies = []
-keywords = ["cqrs", "command", "query", "bus", "async", "asyncio"]
+keywords = [
+    "cqrs",
+    "command",
+    "query",
+    "bus",
+    "async",
+    "asyncio",
+    "mediator",
+    "mediator-pattern",
+    "mediatr",
+    "event-bus",
+    "domain-events",
+    "dependency-injection",
+    "handler",
+    "dispatch",
+    "middleware",
+    "ddd",
+]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -22,7 +39,10 @@ classifiers = [
 ]
 
 [project.urls]
-Repository = "https://github.com/jonathan-kaleve/cqrs-bus"
+Homepage = "https://github.com/john-athan/cqrs-bus"
+Repository = "https://github.com/john-athan/cqrs-bus"
+Documentation = "https://github.com/john-athan/cqrs-bus#readme"
+Issues = "https://github.com/john-athan/cqrs-bus/issues"
 
 [project.optional-dependencies]
 prometheus = ["prometheus-client>=0.21.0"]
