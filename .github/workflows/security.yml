@@ -1,0 +1,25 @@
+name: Security
+
+# Scans dependencies (uv.lock / pyproject.toml) against the OSV vulnerability
+# database. Fails on any known-vulnerable dependency. Runs on push, PR, and
+# weekly. This is the language-agnostic equivalent of cargo-deny.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC
+
+permissions:
+  actions: read
+  contents: read
+  security-events: write
+
+jobs:
+  osv-scan:
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.3.8
+    with:
+      # fail-on-vuln defaults to true, so a known-vuln dependency fails CI.
+      scan-args: |-
+        -r
+        ./
