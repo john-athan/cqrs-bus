@@ -1,3 +1,5 @@
+from typing import TypeVar
+
 from cqrs_bus.bootstrap import Buses, build_buses
 from cqrs_bus.bus import MessageBus, Middleware, Next
 from cqrs_bus.commands.command import Command, CommandHandler, TCommand
@@ -15,7 +17,6 @@ from cqrs_bus.events.event import Event, EventHandler, TEvent
 from cqrs_bus.events.event_bus import EventBus
 from cqrs_bus.queries.query import Query, QueryHandler, TQuery
 from cqrs_bus.queries.query_bus import QueryBus
-from typing import TypeVar
 
 TResult = TypeVar("TResult")
 

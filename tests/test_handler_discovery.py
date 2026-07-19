@@ -1,9 +1,7 @@
 import importlib
 import logging
-import pkgutil
-from abc import abstractmethod
 from typing import Generic, TypeVar
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -11,7 +9,6 @@ from cqrs_bus.commands.command import Command, CommandHandler
 from cqrs_bus.discovery.exceptions import InvalidHandlerError
 from cqrs_bus.discovery.handler_discovery import HandlerDiscovery
 from cqrs_bus.queries.query import Query, QueryHandler
-
 
 # ---------------------------------------------------------------------------
 # Helpers used in multiple test classes

@@ -1,13 +1,13 @@
 """Tests for the public build_buses() bootstrap wiring."""
 
 import pytest
-
-from cqrs_bus import Buses, MissingDependencyError, build_buses
 from fake_app.commands.create_item_handler import CreateItemCommand
 from fake_app.events.item_created_handler import RECORDED, ItemCreated
 from fake_app.queries.get_item_handler import GetItemQuery
 from fake_app.shared.commands.shared_command_handler import SharedCommand
 from fake_app_di.commands.save_handler import Repo, SaveCommand
+
+from cqrs_bus import Buses, MissingDependencyError, build_buses
 
 
 class TestBuildBuses:

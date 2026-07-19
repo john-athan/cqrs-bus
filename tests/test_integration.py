@@ -7,11 +7,11 @@ Exercises:
 """
 
 import pytest
-
-from cqrs_bus import CommandBus, DependencyResolver, HandlerDiscovery, QueryBus
 from fake_app.commands.create_item_handler import CreateItemCommand
 from fake_app.queries.get_item_handler import GetItemQuery
 from fake_app.shared.commands.shared_command_handler import SharedCommand
+
+from cqrs_bus import CommandBus, DependencyResolver, HandlerDiscovery, QueryBus
 
 
 def _build_buses(base_package: str) -> tuple[CommandBus, QueryBus]:
@@ -66,7 +66,6 @@ class TestFullPipeline:
             await command_bus.dispatch(UnknownCommand())
 
     async def test_dispatch_callback_called_during_integration(self):
-        from unittest.mock import MagicMock
 
         calls: list[tuple] = []
 

@@ -1,4 +1,3 @@
-from typing import Optional
 
 import pytest
 
@@ -131,7 +130,7 @@ class TestResolveDependencies:
 
     def test_unwraps_typing_optional(self):
         class OptionalHandler:
-            def __init__(self, service_a: Optional[ServiceA]):
+            def __init__(self, service_a: ServiceA | None):
                 self.service_a = service_a
 
         resolver = DependencyResolver()
