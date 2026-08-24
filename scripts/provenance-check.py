@@ -422,7 +422,8 @@ def main() -> int:
                               LANGUAGE.get(Path(path).suffix)))
 
     scored_probes.sort(key=lambda x: x[0])
-    probes = [(p, l, tm, lg) for _, p, l, tm, lg in scored_probes[:args.limit]]
+    probes = [(path, line, terms, lang)
+              for _, path, line, terms, lang in scored_probes[:args.limit]]
 
     scope = "all tracked source" if base is None else f"changes since {base}"
     print(f"provenance-check: {scope}, license {ours}, {len(probes)} probes\n")
