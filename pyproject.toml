@@ -5,7 +5,7 @@ description = "Async CQRS command/query bus and mediator for Python — handler 
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [{ name = "Jonathan Kaleve", email = "jonathan.kaleve@gmail.com" }]
-requires-python = ">=3.11"
+requires-python = ">=3.14"
 dependencies = []
 keywords = [
     "cqrs",
