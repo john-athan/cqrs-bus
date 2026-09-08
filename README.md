@@ -17,7 +17,7 @@ no registry to hand-maintain.
 - **Type-based dependency injection** — deps resolved from `__init__` annotations, validated at build time.
 - **Middleware pipeline** — onion-style cross-cutting behavior (transactions, retries, auth, timing).
 - **Observability** — structured logs + optional Prometheus metrics, no setup.
-- **Zero runtime deps** — Python 3.11+, stdlib only (Prometheus is opt-in).
+- **Zero runtime deps**, Python 3.14+, stdlib only (Prometheus is opt-in).
 
 ## How it works
 
@@ -237,4 +237,4 @@ pip install cqrs-bus                 # core, zero runtime deps
 pip install "cqrs-bus[prometheus]"  # with Prometheus metrics
 ```
 
-Python 3.11+. MIT licensed.
+Python 3.14+. MIT licensed.

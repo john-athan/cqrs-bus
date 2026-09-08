@@ -75,12 +75,17 @@ class DependencyResolver:
         if annotation in dependency_map:
             return dependency_map[annotation]
 
-        # 2. Unwrap Union — both typing.Union/Optional[X] and PEP 604 X | Y —
-        #    and try each member in order.
+        # 2. Unwrap Union, both typing.Union/Optional[X] and PEP 604 X | Y,
+        #    and recurse into each member so it gets the exact-match and
+        #    subclass-fallback treatment below too, not exact-match only.
         if get_origin(annotation) in (Union, types.UnionType):
             for arg in get_args(annotation):
-                if arg in dependency_map:
-                    return dependency_map[arg]
+                if arg is type(None):
+                    continue
+                value = self._lookup(arg, dependency_map)
+                if value is not _SENTINEL:
+                    return value
+            return _SENTINEL
 
         # 3. Subclass fallback for ABCs and base classes
         if isinstance(annotation, type):

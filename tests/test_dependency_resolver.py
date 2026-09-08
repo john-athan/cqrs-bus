@@ -152,6 +152,21 @@ class TestResolveDependencies:
         resolved = resolver.resolve_dependencies(DerivedDepHandler, {ServiceA: base})
         assert resolved == {"service": base}
 
+    def test_subclass_fallback_inside_optional(self):
+        class DerivedService(ServiceA):
+            pass
+
+        class OptionalDerivedHandler:
+            def __init__(self, service: DerivedService | None):
+                self.service = service
+
+        resolver = DependencyResolver()
+        # The two unwrap steps compose: a registered base type also satisfies
+        # a subclass hidden behind Optional/PEP 604 union, not just a bare one.
+        base = ServiceA()
+        resolved = resolver.resolve_dependencies(OptionalDerivedHandler, {ServiceA: base})
+        assert resolved == {"service": base}
+
     def test_unregistered_param_with_default_is_skipped(self):
         class DefaultedHandler:
             def __init__(self, service_a: ServiceA = None):  # type: ignore[assignment]
